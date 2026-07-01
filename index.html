@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MidPoint</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F4F5F0; --card:#FFFFFF; --ink:#1B201C; --soft:#5A615A;
+    --line:#DCDED6; --route:#DD5B2E; --route-soft:#FBEDE6;
+    --sage:#2F6B5E; --sage-soft:#E7F0ED; --ridge:#8A8579; --gold:#9C6E16;
+    --shadow:0 1px 2px rgba(27,32,28,.04),0 8px 24px rgba(27,32,28,.06);
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:var(--sans)}
+  html{-webkit-text-size-adjust:100%}
+  body{background:var(--paper);color:var(--ink);line-height:1.5;padding:0 18px 80px;
+    background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:26px 26px;background-attachment:fixed}
+  .wrap{max-width:820px;margin:0 auto}
+
+  .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 0 0;flex-wrap:wrap}
+  .credit{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.03em;color:var(--soft)}
+  .credit a{color:var(--ink);text-decoration:none;border-bottom:2px solid var(--route)}
+  .credit a:hover{color:var(--route)}
+  .fb-btn{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.04em;cursor:pointer;
+    background:var(--card);border:1.5px solid var(--line);border-radius:20px;padding:8px 14px;color:var(--ink);transition:all .14s}
+  .fb-btn:hover{border-color:var(--route);color:var(--route)}
+
+  header{padding:20px 0 6px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--route);font-weight:600}
+  h1{font-size:clamp(38px,9vw,60px);line-height:.98;letter-spacing:-.03em;font-weight:800;margin:8px 0 12px}
+  h1 .pin{color:var(--route)}
+  .tagline{color:var(--ink);font-size:clamp(15px,2.4vw,18px);font-weight:500;max-width:40ch;line-height:1.35}
+
+  .segs{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:22px}
+  .seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px;box-shadow:var(--shadow)}
+  .seg button{font-family:var(--sans);font-size:14px;font-weight:600;border:none;cursor:pointer;background:transparent;color:var(--soft);padding:8px 15px;border-radius:8px;transition:all .14s;white-space:nowrap}
+  .seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-top:14px;box-shadow:var(--shadow)}
+  .locgrid{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:end}
+  .locgrid .arrow{font-family:var(--mono);color:var(--ridge);font-size:18px;padding-bottom:11px}
+  .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);font-weight:600;display:block;margin-bottom:8px}
+  select{font-family:var(--sans);font-size:15px;width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:11px;
+    background:var(--paper);color:var(--ink);cursor:pointer;appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%235A615A' stroke-width='1.5' fill='none'/></svg>");
+    background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+  select:focus{outline:2px solid var(--route);outline-offset:1px;border-color:var(--route)}
+
+  #pantsBlock{margin-top:20px;padding-top:18px;border-top:1px dashed var(--line)}
+  .rng{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;background:var(--line);outline:none;margin:14px 0 8px}
+  .rng::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:var(--route);border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.28);cursor:grab}
+  .rng::-webkit-slider-thumb:active{cursor:grabbing}
+  .rng::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--route);border:3px solid #fff;cursor:grab}
+  .rng:focus{outline:none}.rng:focus::-webkit-slider-thumb{box-shadow:0 0 0 4px var(--route-soft)}
+  .pants-ends{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:11px;color:var(--soft);letter-spacing:.02em}
+  .pants-ends #pantsRead{color:var(--route);font-weight:700;text-align:center}
+
+  .ctrlrow{display:flex;flex-wrap:wrap;gap:18px;margin-top:20px;align-items:flex-start}
+  .ctrlblock{flex:1;min-width:170px}
+  .filterrow{display:flex;flex-wrap:wrap;gap:8px}
+  .toggle{font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;background:var(--paper);border:1.5px solid var(--line);border-radius:20px;padding:7px 13px;color:var(--soft);transition:all .14s;display:inline-flex;align-items:center;gap:6px}
+  .toggle[aria-pressed="true"]{background:var(--sage-soft);border-color:var(--sage);color:var(--sage);font-weight:600}
+  .toggle .dot{width:7px;height:7px;border-radius:50%;background:var(--line)}
+  .toggle[aria-pressed="true"] .dot{background:var(--sage)}
+
+  #mapWrap{margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px;box-shadow:var(--shadow)}
+  #lmap{height:360px;width:100%;border-radius:11px;z-index:1}
+  .leaflet-container,.leaflet-popup-content,.leaflet-tooltip,.leaflet-control{font-family:var(--sans)!important}
+  .leaflet-container{background:#eceee8}
+  .pin{background:none;border:none}
+  .mk-you{width:15px;height:15px;background:var(--ink);border:2px solid #fff;border-radius:3px;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+  .mk-them{width:15px;height:15px;background:var(--route);border:2px solid #fff;border-radius:3px;transform:rotate(45deg);box-shadow:0 1px 4px rgba(0,0,0,.35)}
+  .mk-nb{min-width:26px;height:26px;padding:0 5px;background:var(--sage);color:#fff;border:2px solid #fff;border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:700;box-shadow:0 1px 5px rgba(0,0,0,.3);cursor:pointer}
+  .mk-nb.plain{background:#fff;color:var(--sage)}
+  .mk-spot{width:13px;height:13px;background:#fff;border:3px solid var(--route);border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:pointer}
+  .mk-spot.on{width:19px;height:19px;background:var(--route);border-color:#fff}
+  .leaflet-popup-content{margin:11px 13px;font-size:13.5px;line-height:1.5}
+  .leaflet-popup-content b{font-size:14.5px}
+  .leaflet-popup-content .pc{color:var(--soft);font-size:12px}
+  .leaflet-popup-content a{color:var(--route);font-weight:700;text-decoration:none;font-family:var(--mono);font-size:12px;display:inline-block;margin-top:3px}
+  .maphint{font-family:var(--mono);font-size:10.5px;color:var(--ridge);letter-spacing:.03em;margin:8px 2px 2px;text-align:center}
+
+  .backbar{margin-top:16px}
+  .backbtn{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.04em;cursor:pointer;background:var(--card);border:1.5px solid var(--line);border-radius:20px;padding:8px 14px;color:var(--ink)}
+  .backbtn:hover{border-color:var(--route);color:var(--route)}
+
+  .resHead{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);margin:24px 0 4px;font-weight:600}
+
+  .nb{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-top:12px;box-shadow:var(--shadow);overflow:hidden}
+  .nb.focus{border-color:var(--route);box-shadow:0 0 0 2px var(--route-soft),var(--shadow)}
+  .nb-top{display:flex;align-items:center;gap:14px;padding:15px 16px;cursor:pointer;background:none;border:none;width:100%;text-align:left;font-family:var(--sans);color:inherit}
+  .nb-top:hover{background:var(--paper)}
+  .score{flex:none;width:58px;height:58px;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--route-soft);border:1.5px solid #f0cfbf}
+  .score .pct{font-family:var(--mono);font-weight:700;font-size:18px;color:var(--route);line-height:1}
+  .score .lab{font-family:var(--mono);font-size:8px;letter-spacing:.06em;color:var(--route);text-transform:uppercase;margin-top:2px}
+  .nb-meta{flex:1;min-width:0}
+  .nb-meta h3{font-size:18px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .nb-meta h3 .rank{font-family:var(--mono);font-size:12px;color:var(--ridge);font-weight:600}
+  .nb-meta .quality{font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;font-weight:600;padding:2px 7px;border-radius:5px;background:var(--sage-soft);color:var(--sage)}
+  .nb-meta .blurb{font-size:13.5px;color:var(--soft);margin-top:2px}
+  .nb-meta .bal{font-family:var(--mono);font-size:11px;color:var(--soft);margin-top:5px;letter-spacing:.02em}
+  .nb-meta .bal b{color:var(--ink);font-weight:600}
+  .nb-meta .region{font-family:var(--mono);font-size:11px;color:var(--soft);letter-spacing:.04em}
+  .nb-meta .count{font-family:var(--mono);font-size:11px;color:var(--ridge)}
+  .caret{font-family:var(--mono);color:var(--ridge);font-size:13px;flex:none;transition:transform .15s}
+  .nb.open .caret{transform:rotate(90deg);color:var(--route)}
+
+  .nb-body{border-top:1px solid var(--line)}
+  .spot{display:flex;align-items:flex-start;gap:10px;padding:13px 16px;border-top:1px solid var(--line);cursor:pointer}
+  .spot:first-child{border-top:none}.spot:hover{background:var(--paper)}.spot.active{background:var(--route-soft)}
+  .spot-num{flex:none;width:20px;height:20px;border-radius:50%;border:2px solid var(--route);color:var(--route);font-family:var(--mono);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:2px;background:#fff}
+  .spot.active .spot-num{background:var(--route);color:#fff}
+  .spot-main{flex:1;min-width:0}
+  .spot-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .spot h4{font-size:15.5px;font-weight:700}
+  .spot .price{font-family:var(--mono);font-size:12.5px;color:var(--soft);font-weight:600;white-space:nowrap}
+  .spot .cuisine{font-size:12.5px;color:var(--soft);margin-top:1px}
+  .spot .hours{font-family:var(--mono);font-size:11px;color:var(--soft);margin-top:5px;letter-spacing:.01em;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .spot .hours .clock{color:var(--ridge)}
+  .spot .why{font-size:13.5px;color:#3a423a;margin-top:7px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;align-items:center}
+  .chip{font-family:var(--mono);font-size:10px;letter-spacing:.03em;font-weight:600;padding:3px 8px;border-radius:6px}
+  .chip.res{background:#eef2f6;color:#3f5e7a}
+  .chip.park{background:var(--sage-soft);color:var(--sage)}
+  .chip.warn{background:var(--route-soft);color:var(--route)}
+  .chip.note{background:var(--paper);color:var(--soft);border:1px solid var(--line)}
+  .actions{display:flex;gap:6px;margin-left:auto}
+  .book,.dir{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.03em;text-decoration:none;padding:4px 10px;border-radius:7px;white-space:nowrap}
+  .book{background:var(--route);color:#fff;border:1.5px solid var(--route)}
+  .book:hover{background:#c44a22;border-color:#c44a22}
+  .dir{background:transparent;color:var(--route);border:1.5px solid var(--route-soft)}
+  .dir:hover{background:var(--route-soft)}
+
+  .note-line{margin-top:16px;font-family:var(--mono);font-size:10.5px;color:var(--ridge);letter-spacing:.03em;text-align:center;line-height:1.7}
+  footer{margin-top:30px;text-align:center;font-family:var(--mono);font-size:10.5px;color:var(--ridge);letter-spacing:.04em;line-height:1.7}
+
+  .modal-back{position:fixed;inset:0;background:rgba(27,32,28,.5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:1000}
+  .modal-back[hidden]{display:none}
+  .modal{background:var(--card);border-radius:18px;max-width:440px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3);position:relative}
+  .modal h3{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px}
+  .modal p{font-size:13.5px;color:var(--soft);margin-bottom:16px}
+  .modal .close{position:absolute;top:16px;right:16px;background:none;border:none;font-size:22px;color:var(--soft);cursor:pointer;line-height:1;font-family:var(--sans)}
+  .modal input,.modal textarea{font-family:var(--sans);font-size:14.5px;width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:11px;background:var(--paper);color:var(--ink);margin-bottom:10px}
+  .modal textarea{min-height:110px;resize:vertical}
+  .modal input:focus,.modal textarea:focus{outline:2px solid var(--route);outline-offset:1px;border-color:var(--route)}
+  .modal .send{font-family:var(--sans);font-size:15px;font-weight:700;width:100%;padding:12px;border:none;border-radius:11px;background:var(--ink);color:#fff;cursor:pointer;transition:background .14s}
+  .modal .send:hover{background:#000}
+  .modal .fbstatus{font-family:var(--mono);font-size:12px;margin-top:12px;text-align:center;min-height:16px}
+  .modal .fbstatus.ok{color:var(--sage)}.modal .fbstatus.err{color:var(--route)}
+  .modal .priv{font-family:var(--mono);font-size:10.5px;color:var(--ridge);text-align:center;margin-top:10px;letter-spacing:.03em}
+
+  @media (max-width:560px){
+    .locgrid{grid-template-columns:1fr;gap:12px}.locgrid .arrow{display:none}
+    .panel{padding:16px}#lmap{height:300px}.spot-top{flex-wrap:wrap}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="credit" id="credit"></div>
+    <button class="fb-btn" id="openFb">Send feedback</button>
+  </div>
+
+  <header>
+    <span class="eyebrow">lunch logistics, reluctantly</span>
+    <h1>Mid<span class="pin">Point</span></h1>
+    <p class="tagline">I'm too poor to know where to send you to lunch, so stop asking me and just use MidPoint.</p>
+  </header>
+
+  <div class="segs">
+    <div class="seg" role="group" aria-label="Meal">
+      <button id="mode-lunch" aria-pressed="true">Lunch</button>
+      <button id="mode-dinner" aria-pressed="false">Dinner / Drinks</button>
+      <button id="mode-coffee" aria-pressed="false">Coffee</button>
+    </div>
+    <div class="seg" role="group" aria-label="How to search">
+      <button id="view-mid" aria-pressed="true">By midpoint</button>
+      <button id="view-browse" aria-pressed="false">By neighborhood</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="locgrid" id="locGrid">
+      <div><label class="lbl" for="youSel">Your side</label><select id="youSel"></select></div>
+      <div class="arrow">⇄</div>
+      <div><label class="lbl" for="themSel">Other person</label><select id="themSel"></select></div>
+    </div>
+    <div id="pantsBlock">
+      <span class="lbl">Who wears the pants</span>
+      <input type="range" class="rng" id="pants" min="0" max="100" value="50" step="5" aria-label="Who travels more">
+      <div class="pants-ends"><span>They come to me</span><span id="pantsRead">Even. How diplomatic.</span><span>I'll go to them</span></div>
+    </div>
+    <div class="ctrlrow">
+      <div class="ctrlblock">
+        <span class="lbl">Must-haves</span>
+        <div class="filterrow" id="filterRow">
+          <button class="toggle" data-filter="res" aria-pressed="false"><span class="dot"></span>Reservations</button>
+          <button class="toggle" data-filter="park" aria-pressed="false"><span class="dot"></span>Easy parking</button>
+          <button class="toggle" data-filter="cap" aria-pressed="false"><span class="dot"></span>$$ or under</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="mapWrap"><div id="lmap"></div><div class="maphint" id="mapHint"></div></div>
+
+  <div id="backbar"></div>
+  <div class="resHead" id="resHead"></div>
+  <div id="results"></div>
+  <div class="note-line" id="noteLine"></div>
+
+  <footer>Hours shown are a guide — tap Directions for live hours.<br>Reserve links open OpenTable / Resy. MidPoint isn't affiliated with either.</footer>
+</div>
+
+<div class="modal-back" id="fbModal" hidden>
+  <div class="modal">
+    <button class="close" id="closeFb" aria-label="Close">×</button>
+    <h3>Tell me what's broken</h3>
+    <p>Notes, gripes, missing spots — whatever makes this better. Goes straight to me.</p>
+    <input id="fbName" type="text" placeholder="Your name (optional)">
+    <input id="fbContact" type="text" placeholder="Email, so I can reply (optional)">
+    <textarea id="fbMsg" placeholder="What should I fix or add?"></textarea>
+    <button class="send" id="sendFb">Send it</button>
+    <div class="fbstatus" id="fbStatus"></div>
+    <div class="priv">Private — only the creator sees these.</div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Feedback goes to YOU privately via Formspree.
+   To change it, swap FEEDBACK_ENDPOINT. Optional CREATOR_URL links your name.
+   ============================================================ */
+const FEEDBACK_ENDPOINT = "https://formspree.io/f/mzdljpwe";  // Corey's Formspree form
+const FEEDBACK_EMAIL    = "";
+const CREATOR_URL       = "";   // optional: your LinkedIn/portfolio URL
+
+/* ======================= LOCATIONS ======================= */
+const LOCS = [
+  ["Westside / Beach","Santa Monica",34.020,-118.491],["Westside / Beach","Brentwood",34.052,-118.467],
+  ["Westside / Beach","Westwood / UCLA",34.061,-118.445],["Westside / Beach","Century City",34.058,-118.418],
+  ["Westside / Beach","West LA / Sawtelle",34.039,-118.444],["Westside / Beach","Culver City",34.021,-118.397],
+  ["Westside / Beach","Sony Pictures (Culver City)",34.016,-118.401],["Westside / Beach","Marina del Rey",33.980,-118.451],
+  ["Westside / Beach","Playa Vista",33.974,-118.426],["Westside / Beach","Venice",33.990,-118.463],
+  ["Westside / Beach","Mar Vista",34.006,-118.430],["Westside / Beach","Pacific Palisades",34.048,-118.526],
+  ["Westside / Beach","Malibu",34.036,-118.690],["Westside / Beach","El Segundo",33.919,-118.416],
+  ["Westside / Beach","Manhattan Beach",33.885,-118.410],["Westside / Beach","LAX area",33.945,-118.391],
+  ["Central / Hills","Beverly Hills",34.067,-118.400],["Central / Hills","West Hollywood",34.090,-118.376],
+  ["Central / Hills","Hollywood",34.101,-118.327],["Central / Hills","Larchmont / Hancock Park",34.075,-118.324],
+  ["Central / Hills","Mid-Wilshire / Miracle Mile",34.062,-118.353],["Central / Hills","Koreatown",34.058,-118.300],
+  ["Central / Hills","Bel-Air / Beverly Glen",34.100,-118.448],
+  ["The Valley","Studio City",34.143,-118.395],["The Valley","Sherman Oaks",34.150,-118.448],
+  ["The Valley","Encino",34.159,-118.501],["The Valley","Van Nuys",34.189,-118.451],
+  ["The Valley","North Hollywood",34.172,-118.378],["The Valley","Toluca Lake",34.152,-118.353],
+  ["The Valley","Universal City",34.138,-118.353],["The Valley","Burbank",34.148,-118.337],
+  ["The Valley","Woodland Hills",34.168,-118.605],["The Valley","Calabasas",34.138,-118.661],
+  ["Eastside","Downtown LA",34.045,-118.246],["Eastside","Silver Lake",34.087,-118.270],
+  ["Eastside","Los Feliz",34.106,-118.286],["Eastside","Echo Park",34.078,-118.260],
+  ["Eastside","Pasadena",34.147,-118.144],["Eastside","Glendale",34.146,-118.255],
+];
+const LOC_BY_NAME = Object.fromEntries(LOCS.map(l=>[l[1],{lat:l[2],lng:l[3]}]));
+
+/* ======================= MEETING ZONES ======================= */
+const ZONES = {
+  beverly_hills:{name:"Beverly Hills",      lat:34.067,lng:-118.400,region:"Central",blurb:"Canon Dr corridor, valet everywhere"},
+  century_city: {name:"Century City",       lat:34.058,lng:-118.418,region:"Westside",blurb:"mall garage = the easiest parking out here"},
+  westwood:     {name:"Westwood",           lat:34.061,lng:-118.445,region:"Westside",blurb:"the Village, near UCLA"},
+  sawtelle:     {name:"Sawtelle / West LA",  lat:34.039,lng:-118.444,region:"Westside",blurb:"Japanese row — walk-in, parking's the catch"},
+  brentwood:    {name:"Brentwood",          lat:34.052,lng:-118.467,region:"Westside",blurb:"San Vicente, calm and leafy"},
+  weho:         {name:"West Hollywood",     lat:34.090,lng:-118.376,region:"Central",blurb:"Santa Monica Blvd / Melrose"},
+  larchmont:    {name:"Larchmont",          lat:34.075,lng:-118.324,region:"Central",blurb:"village strip, street parking"},
+  beverly_glen: {name:"Top of Beverly Glen",lat:34.128,lng:-118.444,region:"The Pass",blurb:"the Glen Centre — sits right on the pass",pass:true},
+  studio_city:  {name:"Studio City",        lat:34.143,lng:-118.395,region:"Valley",blurb:"Ventura Blvd"},
+  sherman_oaks: {name:"Sherman Oaks",       lat:34.150,lng:-118.448,region:"Valley",blurb:"Ventura, just over the 405"},
+};
+const BROWSE_ORDER = ["beverly_hills","century_city","westwood","sawtelle","brentwood","weho","larchmont","beverly_glen","studio_city","sherman_oaks"];
+
+/* ======================= SPOTS =======================
+   meals: which services it's open for — drives the Lunch / Dinner filter.
+   hours: display guide.  closed: day(s) dark, shown as a warning chip.
+   book: verified reservation platform (omit to auto-resolve). */
+const FOOD = [
+  {zone:"beverly_hills",name:"La Scala",cuisine:"Old-school Italian",price:3,res:"walkin",park:"ok",rating:3.9,meals:["lunch","dinner"],hours:"Mon–Sat 11:30a–9p",closed:"Sun",lat:34.071370,lng:-118.401295,
+   why:"The chopped-salad institution, red booths and all. Lunch is walk-in only; reserve for dinner.",addr:"434 N Canon Dr, Beverly Hills"},
+  {zone:"beverly_hills",name:"South Beverly Grill",cuisine:"American · sushi (Hillstone)",price:3,res:"rec",park:"ok",rating:4.6,meals:["lunch","dinner"],hours:"Daily 11:30a–10p",closed:"",lat:34.066111,lng:-118.398889,
+   why:"Hillstone polish — ribs, pressed sushi, reliable service. Book ahead; the line builds fast.",addr:"122 S Beverly Dr, Beverly Hills"},
+  {zone:"beverly_hills",name:"Viviane",cuisine:"Californian (Avalon Hotel)",price:3,res:"yes",park:"ok",rating:4.5,meals:["lunch","dinner"],hours:"Daily · lunch 11a–3p, dinner from 5:30p",closed:"",lat:34.059113,lng:-118.397197,book:{p:"opentable"},
+   why:"Poolside bistro at the Avalon. Easy to book, valet or meters, calm enough to actually talk.",addr:"9400 W Olympic Blvd, Beverly Hills"},
+  {zone:"beverly_hills",name:"Nua",cuisine:"Mediterranean",price:2,res:"yes",park:"ok",rating:4.4,meals:["lunch","dinner"],hours:"Daily · lunch weekdays, dinner 5–10p",closed:"",lat:34.071224,lng:-118.400335,
+   why:"Stylish covered patio, shareable Med plates. Lunch weekdays, brunch weekends.",addr:"403 N Crescent Dr, Beverly Hills"},
+  {zone:"beverly_hills",name:"The Hideaway",cuisine:"Steak · Mexican",price:3,res:"rec",park:"ok",rating:4.4,meals:["lunch","dinner"],hours:"Daily · lunch to 4p, dinner 5p–late",closed:"",lat:34.069580,lng:-118.403805,book:{p:"resy"},
+   why:"Tucked downstairs off Rodeo — lively but seatable, strong steaks, late-night bar. Reserve, it fills.",addr:"421 N Rodeo Dr, Beverly Hills"},
+  {zone:"century_city",name:"Toscanova",cuisine:"Italian",price:2,res:"yes",park:"easy",rating:4.1,meals:["lunch","dinner"],hours:"Daily 11:30a–9p",closed:"",lat:34.059047,lng:-118.420514,book:{p:"opentable"},
+   why:"Rarely a wait, easy to book, and the garage solves parking. Branzino and pizzas are the move.",addr:"10250 Santa Monica Blvd, Century City"},
+  {zone:"century_city",name:"Javier's",cuisine:"Upscale Mexican",price:3,res:"rec",park:"easy",rating:4.4,meals:["lunch","dinner"],hours:"Daily 11:30a–10p",closed:"",lat:34.059087,lng:-118.420746,book:{p:"opentable"},
+   why:"Big, dark, lively. Reserve ahead; mall garage right there (doesn't validate).",addr:"10250 Santa Monica Blvd, Century City"},
+  {zone:"century_city",name:"Zinqué",cuisine:"French · Californian",price:2,res:"yes",park:"easy",rating:4.3,meals:["lunch","dinner"],hours:"Daily 8a–10p",closed:"",lat:34.059188,lng:-118.420155,
+   why:"Relaxed café-bistro with a fireplace patio. Easy res and parking — good lighter option.",addr:"10250 Santa Monica Blvd, Century City"},
+  {zone:"century_city",name:"Din Tai Fung",cuisine:"Taiwanese dumplings",price:2,res:"walkin",park:"easy",rating:4.5,meals:["lunch","dinner"],hours:"Daily 11a–9:30p",closed:"",lat:34.058171,lng:-118.417441,
+   why:"Full sit-down service (not fast-casual) but no reservations — there can be a wait. Parking's the easy part.",addr:"10250 Santa Monica Blvd, Century City"},
+  {zone:"westwood",name:"Violet L.A.",cuisine:"French-Cal bistro",price:2,res:"yes",park:"ok",rating:4.6,meals:["lunch","dinner"],hours:"Tue–Fri · lunch & dinner",closed:"Sat & Sun",lat:34.060483,lng:-118.444334,book:{p:"resy"},
+   why:"Polished little bistro, seat by the open kitchen. Weekdays only.",addr:"1121 Glendon Ave, Westwood"},
+  {zone:"westwood",name:"LULU",cuisine:"Californian farm-to-table",price:3,res:"yes",park:"easy",rating:4.4,meals:["lunch","dinner"],hours:"Tue–Sun 11a–8:30p",closed:"Mon",lat:34.059622,lng:-118.443614,book:{p:"resy"},
+   why:"Chez Panisse pedigree in the Hammer Museum courtyard — validated museum parking makes it the easy-park pick.",addr:"10899 Wilshire Blvd, Westwood"},
+  {zone:"westwood",name:"The Hideout",cuisine:"American (Westin patio)",price:2,res:"rec",park:"ok",rating:4.1,meals:["lunch"],hours:"Daily 7a–3p (breakfast/lunch)",closed:"",lat:34.063262,lng:-118.440902,
+   why:"Relaxed hotel patio, daytime only. Good morning or lunch meet.",addr:"930 Hilgard Ave, Westwood"},
+  {zone:"sawtelle",name:"Tsujita LA",cuisine:"Ramen · tsukemen",price:2,res:"walkin",park:"tough",rating:4.5,meals:["lunch","dinner"],hours:"Daily 11a–10p",closed:"",lat:34.039571,lng:-118.442653,
+   why:"A Sawtelle institution. Worth it, but walk-in and parking is genuinely hard — pick it when res/parking aren't the priority.",addr:"2057 Sawtelle Blvd, West LA"},
+  {zone:"sawtelle",name:"Daikokuya",cuisine:"Ramen",price:1,res:"walkin",park:"tough",rating:4.3,meals:["lunch","dinner"],hours:"Daily 11a–11p",closed:"",lat:34.037975,lng:-118.440833,
+   why:"Cozy alleyway vibe, spicy miso. Same Sawtelle caveats: walk-in, fight for parking.",addr:"2208 Sawtelle Blvd, West LA"},
+  {zone:"brentwood",name:"Toscana",cuisine:"Italian (fine dining)",price:3,res:"yes",park:"ok",rating:4.3,meals:["lunch","dinner"],hours:"Daily · lunch & dinner",closed:"",lat:34.054191,lng:-118.463188,book:{p:"opentable"},
+   why:"A 30-year Westside institution — consistent, business-lunch friendly, valet out front. Reserve; the room's a scene.",addr:"11633 San Vicente Blvd, Brentwood"},
+  {zone:"brentwood",name:"Osteria Vera",cuisine:"Italian",price:2,res:"yes",park:"tough",rating:4.7,meals:["lunch","dinner"],hours:"Daily · lunch & dinner",closed:"",lat:34.053496,lng:-118.461971,book:{p:"resy"},
+   why:"Warm neighborhood Italian, open kitchen, generous plates. Books up; San Vicente parking is the catch.",addr:"11604 San Vicente Blvd, Brentwood"},
+  {zone:"brentwood",name:"Jon & Vinny's",cuisine:"Italian · all-day",price:3,res:"yes",park:"tough",rating:4.2,meals:["lunch","dinner"],hours:"Daily 8a–10p (all-day)",closed:"",lat:34.052161,lng:-118.471402,book:{p:"resy",slug:"jon-and-vinnys-btwd"},
+   why:"Buzzy all-day Italian, serious pasta and pizza. Loud and tight on parking, but takes reservations.",addr:"11938 San Vicente Blvd, Brentwood"},
+  {zone:"weho",name:"La Boheme",cuisine:"Californian · American",price:2,res:"yes",park:"easy",rating:4.5,meals:["dinner"],hours:"Dinner nightly from 5p · weekend brunch",closed:"",lat:34.090414,lng:-118.373650,book:{p:"opentable"},
+   why:"Big, handsome romantic room on Santa Monica Blvd, easy to book, lot/valet parking. Dinner (and weekend brunch) only — no weekday lunch.",addr:"8400 Santa Monica Blvd, West Hollywood"},
+  {zone:"weho",name:"The Butcher's Daughter",cuisine:"Veg-forward Californian",price:2,res:"yes",park:"ok",rating:4.6,meals:["lunch","dinner"],hours:"Daily 8a–10p",closed:"",lat:34.081052,lng:-118.384931,book:{p:"resy"},
+   why:"Bright, plant-leaning menu on Melrose. Good for a lighter lunch; lot behind.",addr:"8755 Melrose Ave, West Hollywood"},
+  {zone:"larchmont",name:"Great White",cuisine:"Californian",price:2,res:"yes",park:"ok",rating:4.3,meals:["lunch","dinner"],hours:"Daily 8a–10p",closed:"",lat:34.075879,lng:-118.323393,book:{p:"resy"},
+   why:"Airy Larchmont Blvd spot with that easy-LA-café feel. Takes reservations; street parking on the village.",addr:"244 N Larchmont Blvd, Larchmont"},
+  {zone:"larchmont",name:"Tu Madre",cuisine:"Modern Mexican",price:2,res:"walkin",park:"ok",rating:4.4,meals:["lunch","dinner"],hours:"Daily · lunch & dinner",closed:"",lat:34.083369,lng:-118.323499,
+   why:"Elevated tacos and a fun bar. Walk-in but pleasant; good casual midpoint heading east.",addr:"660 N Larchmont Blvd, Larchmont"},
+  {zone:"beverly_glen",name:"Beverly Glen Deli",cuisine:"Deli · American",price:2,res:"walkin",park:"ok",rating:4.4,meals:["lunch","dinner"],hours:"Daily 7a–9p",closed:"",lat:34.127682,lng:-118.443807,
+   why:"The 'split the mountain' pick — top of Beverly Glen Circle, dead center over the pass. Pastrami, sandwiches; walk-in, busy lot at peak.",addr:"2948 Beverly Glen Cir, Bel Air"},
+  {zone:"studio_city",name:"Granville",cuisine:"American",price:2,res:"yes",park:"ok",rating:4.6,meals:["lunch","dinner"],hours:"Daily · lunch & dinner",closed:"",lat:34.143103,lng:-118.402850,book:{p:"opentable"},
+   why:"Reliable Ventura Blvd lunch — books easily, broad menu, good for a working meal. Valet or street.",addr:"12345 Ventura Blvd, Studio City"},
+  {zone:"studio_city",name:"The Six Social House",cuisine:"American",price:2,res:"yes",park:"easy",rating:4.5,meals:["lunch","dinner"],hours:"Daily · lunch 11:30a–4p, dinner to 10p",closed:"",lat:34.144146,lng:-118.409041,book:{p:"opentable"},
+   why:"Lively patio on Ventura, valet makes parking painless, takes reservations.",addr:"12650 Ventura Blvd, Studio City"},
+  {zone:"studio_city",name:"Rosetta Osteria",cuisine:"Italian · crudo",price:2,res:"yes",park:"ok",rating:4.5,meals:["dinner"],hours:"Tue–Sun dinner from 5p",closed:"Mon",lat:34.143247,lng:-118.402167,book:{p:"resy"},
+   why:"Warm, dim, date-night-ish Italian with a crudo bar. Dinner only.",addr:"12345 Ventura Blvd, Studio City"},
+  {zone:"studio_city",name:"Firefly",cuisine:"American · supper club",price:3,res:"yes",park:"ok",rating:4.5,meals:["dinner"],hours:"Nightly from 5p",closed:"",lat:34.141336,lng:-118.388447,book:{p:"opentable",path:"firefly-studio-city"},
+   why:"Hidden, clubby, the library room. Dinner only — the pick when the Valley meet is an actual dinner.",addr:"11720 Ventura Blvd, Studio City"},
+  {zone:"sherman_oaks",name:"Bacari Sherman Oaks",cuisine:"Mediterranean · tapas",price:2,res:"yes",park:"easy",rating:4.5,meals:["lunch","dinner"],hours:"Dinner nightly · lunch Fri–Sun only",closed:"",lat:34.149215,lng:-118.440155,book:{p:"resy"},
+   why:"Cozy share-plates and good wine on Ventura. Takes reservations, parking's manageable. Lunch is weekends-plus-Friday only.",addr:"14106 Ventura Blvd, Sherman Oaks"},
+  {zone:"sherman_oaks",name:"The Local Peasant",cuisine:"American gastropub",price:2,res:"yes",park:"ok",rating:4.4,meals:["dinner"],hours:"Nightly, opens ~4p",closed:"",lat:34.149137,lng:-118.439196,
+   why:"A 10-year staple — fish & chips, solid cocktails. Good 405-crossover dinner spot.",addr:"14058 Ventura Blvd, Sherman Oaks"},
+  {zone:"sherman_oaks",name:"Garden Cafe",cuisine:"American · brunch",price:2,res:"walkin",park:"tough",rating:4.4,meals:["lunch"],hours:"Daily 8a–3p (breakfast/lunch)",closed:"",lat:34.149586,lng:-118.431732,
+   why:"Charming all-day café with a patio, good daytime meet. Walk-in; tiny lot, budget time.",addr:"4351 Woodman Ave, Sherman Oaks"},
+];
+const COFFEE = [
+  {zone:"beverly_hills",name:"Philz Coffee",cuisine:"Pour-over · custom drinks",price:2,res:"walkin",park:"ok",rating:4.4,meals:["coffee"],hours:"Daily 6a–8p",closed:"",lat:34.063833,lng:-118.399397,
+   why:"Made-to-order, mint mojito iced, plenty of outdoor seating to sit and talk. On S Beverly Dr.",addr:"233 S Beverly Dr, Beverly Hills"},
+  {zone:"beverly_hills",name:"bome coffee",cuisine:"Japanese-style café",price:2,res:"walkin",park:"ok",rating:5.0,meals:["coffee"],hours:"Daily 8a–7p",closed:"",lat:34.071947,lng:-118.388990,
+   why:"Elegant, calm room on Burton Way. Rose/matcha lattes, nice pastries — a clear step up from a chain.",addr:"9038 Burton Way, Beverly Hills"},
+  {zone:"beverly_hills",name:"Parakeet Cafe",cuisine:"Café · light food",price:2,res:"walkin",park:"ok",rating:4.5,meals:["coffee"],hours:"Daily 7a–7p",closed:"",lat:34.064733,lng:-118.398892,
+   why:"Clean sit-down café on S Beverly with real food too. Free city lot a couple minutes away.",addr:"206 S Beverly Dr, Beverly Hills"},
+  {zone:"beverly_hills",name:"Series A Coffee",cuisine:"Specialty espresso",price:2,res:"walkin",park:"ok",rating:4.3,meals:["coffee"],hours:"Daily 7a–6p",closed:"",lat:34.064172,lng:-118.372834,
+   why:"Well-pulled espresso on Wilshire, regulars-know-your-name vibe. For when the coffee itself matters.",addr:"8328 Wilshire Blvd, Beverly Hills"},
+  {zone:"century_city",name:"Clementine",cuisine:"Café · bakery",price:2,res:"walkin",park:"ok",rating:4.4,meals:["coffee"],hours:"Mon–Sat 7a–5p",closed:"Sun",lat:34.060254,lng:-118.420848,
+   why:"Cozy café with great cookies and a little terrace off Santa Monica Blvd.",addr:"1751 Ensley Ave, Century City"},
+  {zone:"brentwood",name:"Caffe Luxxe",cuisine:"European-style café",price:2,res:"walkin",park:"ok",rating:4.4,meals:["coffee"],hours:"Daily 6a–7p",closed:"",lat:34.053493,lng:-118.462519,
+   why:"Polished San Vicente café — artisanal coffee, details right. The Westside coffee answer toward Brentwood.",addr:"11640 San Vicente Blvd, Brentwood"},
+  {zone:"sawtelle",name:"Way Home Coffee",cuisine:"Specialty · einspänner",price:1,res:"walkin",park:"tough",rating:4.7,meals:["coffee"],hours:"Daily 8a–6p",closed:"",lat:34.048310,lng:-118.443259,
+   why:"Thoughtful Korean-Japanese-style café on Santa Monica Blvd. Lovely drinks; parking's the only catch.",addr:"11049 Santa Monica Blvd, West LA"},
+  {zone:"sawtelle",name:"10 Speed Coffee",cuisine:"Specialty roaster",price:1,res:"walkin",park:"tough",rating:4.4,meals:["coffee"],hours:"Daily 6a–7p",closed:"",lat:34.041181,lng:-118.444033,
+   why:"Serious drip and espresso in Sawtelle. Good when the meet's already out west.",addr:"1947 Sawtelle Blvd, West LA"},
+  {zone:"studio_city",name:"Saint Coffee",cuisine:"Specialty café",price:1,res:"walkin",park:"tough",rating:4.7,meals:["coffee"],hours:"Daily 7a–5p",closed:"",lat:34.150189,lng:-118.388126,
+   why:"Among the best in the Valley — warm room, excellent cappuccinos on Moorpark. Go a touch off-peak; parking's cutthroat.",addr:"11706 Moorpark St, Studio City"},
+  {zone:"studio_city",name:"Coffee and Plants",cuisine:"Café (plant-based)",price:2,res:"walkin",park:"ok",rating:4.3,meals:["coffee"],hours:"Daily 7a–6p",closed:"",lat:34.142813,lng:-118.401989,
+   why:"Mellow, plant-filled Ventura Blvd café — good low-key sit-down.",addr:"12334 Ventura Blvd, Studio City"},
+  {zone:"studio_city",name:"Whata Peach",cuisine:"Café · smoothies",price:2,res:"walkin",park:"ok",rating:4.7,meals:["coffee"],hours:"Daily 8a–7p",closed:"",lat:34.141130,lng:-118.371540,
+   why:"Cute, breezy spot for matcha/lattes and a bite. Easy casual Valley meet.",addr:"11055 Ventura Blvd, Studio City"},
+];
+
+/* ======================= SCORING ======================= */
+const RIDGE_LAT=34.118, CROSS_PENALTY=3.0, PASS_PENALTY=1.0, FAIR_W=1.4, SMOOTH=1.0;
+function haversine(a,b){const R=3958.8,t=Math.PI/180;const dLat=(b.lat-a.lat)*t,dLng=(b.lng-a.lng)*t,la1=a.lat*t,la2=b.lat*t;
+  const x=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(x));}
+const side=p=>p.lat>RIDGE_LAT?"valley":"basin";
+function effDist(a,b){let d=haversine(a,b);if(side(a)!==side(b))d+=(a.pass||b.pass)?PASS_PENALTY:CROSS_PENALTY;return d;}
+function scoreZone(you,them,z){
+  const youFrac=Math.max(0.1,Math.min(0.9,state.pants/100));
+  const cY=effDist(you,z), cT=effDist(them,z);
+  const total=cY+cT, actual=total>0?cY/total:0.5;
+  const cost=total+FAIR_W*total*Math.abs(actual-youFrac);
+  const ref=effDist(you,them);
+  let pct=100*(ref+SMOOTH)/(cost+SMOOTH);
+  return {pct:Math.max(1,Math.min(100,Math.round(pct))),milesYou:haversine(you,z),milesThem:haversine(them,z)};
+}
+function quality(p){return p>=90?"ideal":p>=78?"strong":p>=62?"workable":"a stretch";}
+function pantsRead(v){return v<=15?"They come to you. Power move.":v<40?"They drive more.":v<=60?"Even. How diplomatic.":v<85?"You drive more.":"You're going to them. Soft.";}
+
+/* ======================= STATE ======================= */
+let state={kind:"lunch",view:"midpoint",you:"Beverly Hills",them:"Santa Monica",
+  filters:{res:false,park:false,cap:false},pants:50,focusZone:null,activeSpot:null};
+let lastRanked=[];
+
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const priceStr=p=>"$".repeat(p);
+const uid=s=>s.zone+"|"+s.name;
+const mapUrl=s=>"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(s.name+" "+s.addr);
+const data=()=>state.kind==="coffee"?COFFEE:FOOD;
+
+function reserveUrl(s){
+  const b=s.book, nb=ZONES[s.zone]?ZONES[s.zone].name:"Los Angeles";
+  if(b&&b.p==="resy"&&b.slug) return `https://resy.com/cities/los-angeles-ca/venues/${b.slug}`;
+  if(b&&b.p==="resy") return `https://resy.com/cities/los-angeles-ca?query=${encodeURIComponent(s.name)}`;
+  if(b&&b.p==="opentable"&&b.path) return `https://www.opentable.com/${b.path}`;
+  if(b&&b.p==="opentable") return `https://www.opentable.com/s?term=${encodeURIComponent(s.name+" Los Angeles")}`;
+  return `https://www.google.com/search?q=${encodeURIComponent(s.name+" "+nb+" reservation")}`;
+}
+function reserveLabel(s){const b=s.book;return b&&b.p==="resy"?"Reserve · Resy":b&&b.p==="opentable"?"Reserve · OpenTable":"Reserve";}
+
+function passFilters(s){
+  if(state.kind==="lunch" && !s.meals.includes("lunch")) return false;
+  if(state.kind==="dinner" && !s.meals.includes("dinner")) return false;
+  if(state.filters.res && !(s.res==="yes"||s.res==="rec")) return false;
+  if(state.filters.park && s.park!=="easy") return false;
+  if(state.filters.cap && s.price>2) return false;
+  return true;
+}
+const qualifying=key=>data().filter(s=>s.zone===key && passFilters(s));
+function fit(s){return s.rating+(s.res==="yes"?1:s.res==="rec"?0.6:0)+(s.park==="easy"?1:s.park==="ok"?0.4:0)+(s.price<=2?0.5:0);}
+
+/* ======================= SELECTS ======================= */
+function buildSelects(){
+  const groups={};LOCS.forEach(l=>{(groups[l[0]]=groups[l[0]]||[]).push(l[1]);});
+  const opts=Object.entries(groups).map(([g,names])=>`<optgroup label="${g}">`+names.map(n=>`<option value="${n}">${n}</option>`).join("")+`</optgroup>`).join("");
+  const y=$("#youSel"),t=$("#themSel");y.innerHTML=opts;t.innerHTML=opts;y.value=state.you;t.value=state.them;
+  y.onchange=()=>{state.you=y.value;state.focusZone=null;state.activeSpot=null;render();};
+  t.onchange=()=>{state.them=t.value;state.focusZone=null;state.activeSpot=null;render();};
+}
+
+/* ======================= MAP ======================= */
+let map, pinLayer, spotMarkers={};
+function initMap(){
+  map=L.map('lmap',{scrollWheelZoom:true,zoomControl:true}).setView([34.07,-118.40],11);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    {attribution:'&copy; OpenStreetMap, &copy; CARTO',subdomains:'abcd',maxZoom:19}).addTo(map);
+  pinLayer=L.layerGroup().addTo(map);
+  L.polyline([[RIDGE_LAT,-118.69],[RIDGE_LAT,-118.30]],{color:'#8A8579',weight:1.5,dashArray:'7 6',opacity:0.6})
+    .bindTooltip("Santa Monica Mtns — the divide",{sticky:true}).addTo(map);
+}
+function icon(kind,label){
+  const html=kind==="you"?'<div class="mk-you"></div>':kind==="them"?'<div class="mk-them"></div>'
+    :kind==="nb"?`<div class="mk-nb">${label}</div>`:kind==="nbp"?`<div class="mk-nb plain">${label}</div>`
+    :`<div class="mk-spot${label==='on'?' on':''}"></div>`;
+  const sz=kind==="nb"||kind==="nbp"?[30,30]:kind==="spot"?(label==='on'?[22,22]:[16,16]):[18,18];
+  return L.divIcon({html,className:'pin',iconSize:sz,iconAnchor:[sz[0]/2,sz[1]/2]});
+}
+function spotPopup(s){
+  const reserve = s.res!=="walkin" ? `<a href="${reserveUrl(s)}" target="_blank" rel="noopener">${reserveLabel(s)} ↗</a><br>` : "";
+  const closed = s.closed ? `<span class="pc"> · Closed ${s.closed}</span>` : "";
+  return `<b>${s.name}</b><br><span class="pc">${s.cuisine} · ${priceStr(s.price)}</span><br><span class="pc">${s.hours}</span>${closed}<br>${reserve}<a href="${mapUrl(s)}" target="_blank" rel="noopener">Directions ↗</a>`;
+}
+function refreshMap(){
+  if(!map) return;
+  pinLayer.clearLayers(); spotMarkers={};
+  const pts=[]; const you=LOC_BY_NAME[state.you], them=LOC_BY_NAME[state.them];
+  const addSpot=(s)=>{const on=state.activeSpot===uid(s);
+    const m=L.marker([s.lat,s.lng],{icon:icon("spot",on?"on":"off")}).addTo(pinLayer).bindPopup(spotPopup(s));
+    m.on('click',()=>{state.activeSpot=uid(s);markActiveRow();refreshMap();});
+    spotMarkers[uid(s)]=m; pts.push([s.lat,s.lng]);};
+  const addNb=(key,label,numbered)=>{const z=ZONES[key];
+    const m=L.marker([z.lat,z.lng],{icon:icon(numbered?"nb":"nbp",label)}).addTo(pinLayer).bindTooltip(z.name,{direction:'top',offset:[0,-12]});
+    m.on('click',()=>focusNeighborhood(key)); pts.push([z.lat,z.lng]);};
+  if(state.focusZone){
+    const spots=qualifying(state.focusZone); spots.forEach(addSpot);
+    if(!spots.length){const z=ZONES[state.focusZone];pts.push([z.lat,z.lng]);}
+  } else if(state.view==="midpoint"){
+    L.marker([you.lat,you.lng],{icon:icon("you")}).addTo(pinLayer).bindTooltip("You: "+state.you,{direction:'top',offset:[0,-8]});
+    L.marker([them.lat,them.lng],{icon:icon("them")}).addTo(pinLayer).bindTooltip("Them: "+state.them,{direction:'top',offset:[0,-8]});
+    pts.push([you.lat,you.lng],[them.lat,them.lng]);
+    lastRanked.forEach((r,i)=>addNb(r.key,String(i+1),true));
+  } else { BROWSE_ORDER.forEach(key=>{ if(qualifying(key).length) addNb(key,"●",false); }); }
+  if(pts.length) map.fitBounds(L.latLngBounds(pts),{padding:[40,40],maxZoom:state.focusZone?16:13});
+  if(state.activeSpot && spotMarkers[state.activeSpot]){const m=spotMarkers[state.activeSpot];setTimeout(()=>m.openPopup(),120);}
+}
+function ensureMapVisible(){if(!map)return;map.invalidateSize();
+  const r=$("#mapWrap").getBoundingClientRect();
+  if(r.top<0||r.bottom>window.innerHeight) $("#mapWrap").scrollIntoView({behavior:'smooth',block:'nearest'});}
+
+/* ======================= INTERACTIONS ======================= */
+function focusNeighborhood(key){state.focusZone=state.focusZone===key?null:key;state.activeSpot=null;render();ensureMapVisible();}
+function focusSpot(s){state.focusZone=s.zone;state.activeSpot=uid(s);render();ensureMapVisible();}
+function markActiveRow(){$$('.spot').forEach(el=>el.classList.toggle('active',el.dataset.uid===state.activeSpot));}
+
+/* ======================= RENDER ======================= */
+function spotRow(s,idx){
+  let chips="";
+  if(s.res==="yes") chips+=`<span class="chip res">reservations</span>`;
+  else if(s.res==="rec") chips+=`<span class="chip res">book ahead</span>`;
+  else chips+=`<span class="chip note">walk-in</span>`;
+  if(s.park==="easy") chips+=`<span class="chip park">easy parking</span>`;
+  else if(s.park==="tough") chips+=`<span class="chip warn">tough parking</span>`;
+  if(s.closed) chips+=`<span class="chip warn">Closed ${s.closed}</span>`;
+  const reserve = s.res!=="walkin" ? `<a class="book" href="${reserveUrl(s)}" target="_blank" rel="noopener" data-stop="1">${reserveLabel(s)} ↗</a>` : "";
+  const active=state.activeSpot===uid(s)?" active":"";
+  return `<div class="spot${active}" data-uid="${uid(s)}">
+    <div class="spot-num">${idx}</div>
+    <div class="spot-main">
+      <div class="spot-top"><h4>${s.name}</h4><span class="price">${priceStr(s.price)}</span></div>
+      <div class="cuisine">${s.cuisine}</div>
+      <div class="hours"><span class="clock">◷</span> ${s.hours}</div>
+      <div class="why">${s.why}</div>
+      <div class="chips">${chips}<span class="actions">${reserve}<a class="dir" href="${mapUrl(s)}" target="_blank" rel="noopener" data-stop="1">Directions ↗</a></span></div>
+    </div></div>`;
+}
+function renderMidpoint(){
+  const you=LOC_BY_NAME[state.you],them=LOC_BY_NAME[state.them];
+  const ranked=[];
+  Object.keys(ZONES).forEach(key=>{const spots=qualifying(key);if(!spots.length)return;
+    const sc=scoreZone(you,them,ZONES[key]);spots.sort((a,b)=>fit(b)-fit(a));ranked.push({key,...sc,spots});});
+  ranked.sort((a,b)=>b.pct-a.pct||b.spots[0].rating-a.spots[0].rating);
+  lastRanked=ranked;
+  const head=$("#resHead"),res=$("#results");
+  if(!ranked.length){head.textContent="Nothing. Congrats.";
+    res.innerHTML=`<div class="panel" style="text-align:center;color:var(--soft)">Nothing open clears your filters for this. Loosen one, or try the other meal.</div>`;return;}
+  head.textContent=ranked.length>=5?`Where you should meet · ${ranked.length} options, ranked`:`Where you should meet · ${ranked.length} option${ranked.length>1?'s':''} (loosen a filter for more)`;
+  res.innerHTML=ranked.map((r,i)=>{const z=ZONES[r.key];const focused=state.focusZone===r.key;
+    const closer=Math.abs(r.milesYou-r.milesThem)<1.2?"Balanced both ways":(r.milesYou<r.milesThem?"Closer to your side":"Closer to them");
+    return `<div class="nb${focused?' focus open':''}" data-zone="${r.key}">
+      <button class="nb-top" data-zone="${r.key}">
+        <div class="score"><span class="pct">${r.pct}%</span><span class="lab">match</span></div>
+        <div class="nb-meta">
+          <h3><span class="rank">#${i+1}</span> ${z.name} <span class="quality">${quality(r.pct)}</span></h3>
+          <div class="blurb">${z.blurb}</div>
+          <div class="bal"><b>${closer}</b> · you ~${r.milesYou.toFixed(1)}mi · them ~${r.milesThem.toFixed(1)}mi</div>
+        </div><span class="caret">▸</span>
+      </button>
+      <div class="nb-body">${r.spots.map((s,j)=>spotRow(s,j+1)).join("")}</div>
+    </div>`;}).join("");
+  wireResults();
+}
+function renderBrowse(){
+  lastRanked=[];const head=$("#resHead"),res=$("#results");
+  head.textContent="Pick a neighborhood. Any neighborhood.";
+  res.innerHTML=BROWSE_ORDER.map(key=>{const z=ZONES[key];const spots=qualifying(key);spots.sort((a,b)=>fit(b)-fit(a));
+    const open=state.focusZone===key;
+    const body=spots.length?spots.map((s,j)=>spotRow(s,j+1)).join(""):`<div class="spot" style="cursor:default"><div class="spot-main"><div class="cuisine">Nothing open here for this.</div></div></div>`;
+    return `<div class="nb${open?' open focus':''}" data-zone="${key}">
+      <button class="nb-top" data-zone="${key}">
+        <div class="nb-meta" style="margin-left:2px">
+          <h3>${z.name}</h3><div class="region">${z.region} · ${z.blurb}</div><div class="count">${spots.length} spot${spots.length===1?'':'s'}</div>
+        </div><span class="caret">▸</span>
+      </button>${open?`<div class="nb-body">${body}</div>`:``}
+    </div>`;}).join("");
+  wireResults();
+}
+function wireResults(){
+  $$('.nb-top').forEach(btn=>btn.onclick=()=>focusNeighborhood(btn.dataset.zone));
+  $$('.spot').forEach(row=>{if(!row.dataset.uid)return;
+    row.onclick=(e)=>{if(e.target.closest('[data-stop]'))return;
+      const s=data().find(x=>uid(x)===row.dataset.uid);if(s)focusSpot(s);};});
+}
+function render(){
+  $("#locGrid").style.display=state.view==="midpoint"?"":"none";
+  $("#pantsBlock").style.display=state.view==="midpoint"?"":"none";
+  if(state.view==="midpoint") renderMidpoint(); else renderBrowse();
+  const bb=$("#backbar");
+  bb.innerHTML=state.focusZone?`<div class="backbar"><button class="backbtn" id="backBtn">← ${state.view==="midpoint"?"Back to all options":"All neighborhoods"}</button></div>`:"";
+  if(state.focusZone) $("#backBtn").onclick=()=>{state.focusZone=null;state.activeSpot=null;render();ensureMapVisible();};
+  $("#mapHint").textContent=state.focusZone?"Zoomed to "+ZONES[state.focusZone].name+" — tap a pin to reserve or get directions"
+    :state.view==="midpoint"?"You ◼ · them ◆ · numbered = ranked meeting spots. Tap any pin.":"Tap a neighborhood (here or on the map) to see its spots";
+  const notes={lunch:"Lunch — sit-down, reservations &amp; parking in mind. No fast-casual, I have standards.",
+    dinner:"Dinner &amp; drinks — sit-down, no fast-casual.",
+    coffee:"Sit-down cafés, a step above chain coffee. You're welcome."};
+  $("#noteLine").innerHTML=notes[state.kind];
+  refreshMap();markActiveRow();
+}
+
+/* ======================= FEEDBACK ======================= */
+function openFb(){$("#fbModal").hidden=false;$("#fbStatus").textContent="";$("#fbStatus").className="fbstatus";}
+function closeFb(){$("#fbModal").hidden=true;}
+async function sendFb(){
+  const name=$("#fbName").value.trim(), contact=$("#fbContact").value.trim(), msg=$("#fbMsg").value.trim();
+  const st=$("#fbStatus");
+  if(!msg){st.className="fbstatus err";st.textContent="Write something first.";return;}
+  const payload={name:name||"(anon)",contact:contact||"(none)",message:msg,app:"MidPoint"};
+  if(FEEDBACK_ENDPOINT){
+    st.className="fbstatus";st.textContent="Sending…";
+    try{
+      const r=await fetch(FEEDBACK_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(payload)});
+      if(r.ok){st.className="fbstatus ok";st.textContent="Sent. Noted. Thanks.";$("#fbName").value=$("#fbContact").value=$("#fbMsg").value="";}
+      else throw new Error();
+    }catch(e){
+      st.className="fbstatus err";
+      st.innerHTML = FEEDBACK_EMAIL ? `Couldn't send — <a href="${mailtoLink(payload)}" style="color:var(--route)">email it instead</a>.` : "Couldn't send. Try again later.";
+    }
+  } else if(FEEDBACK_EMAIL){ window.location.href=mailtoLink(payload); st.className="fbstatus ok";st.textContent="Opening your mail app…";
+  } else { st.className="fbstatus err";st.textContent="Feedback isn't wired up yet."; }
+}
+function mailtoLink(p){const body=`From: ${p.name}\nReply to: ${p.contact}\n\n${p.message}`;
+  return `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent("MidPoint feedback")}&body=${encodeURIComponent(body)}`;}
+
+/* ======================= WIRING ======================= */
+["lunch","dinner","coffee"].forEach(k=>{
+  $("#mode-"+k).onclick=()=>setMode(k);
+});
+function setMode(k){
+  state.kind=k;
+  ["lunch","dinner","coffee"].forEach(x=>$("#mode-"+x).setAttribute("aria-pressed",x===k));
+  const rt=$('#filterRow [data-filter="res"]'); rt.style.display=k==="coffee"?"none":"";
+  if(k==="coffee"){state.filters.res=false;rt.setAttribute("aria-pressed","false");}
+  if(state.focusZone && !qualifying(state.focusZone).length) state.focusZone=null;
+  state.activeSpot=null;render();
+}
+$("#view-mid").onclick=()=>setView("midpoint");
+$("#view-browse").onclick=()=>setView("browse");
+function setView(v){state.view=v;state.focusZone=null;state.activeSpot=null;
+  $("#view-mid").setAttribute("aria-pressed",v==="midpoint");$("#view-browse").setAttribute("aria-pressed",v==="browse");
+  render();ensureMapVisible();}
+$("#pants").oninput=(e)=>{state.pants=+e.target.value;$("#pantsRead").textContent=pantsRead(state.pants);if(state.view==="midpoint")render();};
+$$('#filterRow .toggle').forEach(t=>t.onclick=()=>{const f=t.dataset.filter;state.filters[f]=!state.filters[f];t.setAttribute("aria-pressed",state.filters[f]);
+  if(state.focusZone && !qualifying(state.focusZone).length) state.focusZone=null;render();});
+$("#openFb").onclick=openFb;$("#closeFb").onclick=closeFb;$("#sendFb").onclick=sendFb;
+$("#fbModal").onclick=(e)=>{if(e.target.id==="fbModal")closeFb();};
+
+$("#credit").innerHTML = CREATOR_URL
+  ? `Created by <a href="${CREATOR_URL}" target="_blank" rel="noopener">Corey Hanley</a>`
+  : `Created by <a href="#" onclick="return false" style="cursor:default">Corey Hanley</a>`;
+
+/* ======================= INIT ======================= */
+buildSelects(); initMap(); render();
+setTimeout(()=>{map.invalidateSize();refreshMap();},300);
+</script>
+</body>
+</html>
